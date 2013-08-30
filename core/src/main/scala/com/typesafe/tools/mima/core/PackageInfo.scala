@@ -1,5 +1,6 @@
 package com.typesafe.tools.mima.core
 
+import scala.reflect.NameTransformer
 import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.util.ClassPath
 import collection.mutable
@@ -64,22 +65,28 @@ abstract class PackageInfo(val owner: PackageInfo) {
   def classes: mutable.Map[String, ClassInfo]
 
   lazy val accessibleClasses: Set[ClassInfo] = {
+    val namedClasses =
+      classes.valuesIterator
+        .map(ci => (NameTransformer.decode(ci.name), ci)).toSet
+
     /** Fixed point iteration for finding all accessible classes. */
-    def accessibleClassesUnder(prefix: Set[ClassInfo]): Set[ClassInfo] = {
-      val vclasses = (classes.valuesIterator filter (isAccessible(_, prefix))).toSet
+    def accessibleClassesUnder(prefix: Set[(String, ClassInfo)]): Set[(String, ClassInfo)] = {
+      val vclasses = namedClasses filter {case (dn, clazz) =>
+        isAccessible(dn, clazz, prefix)}
       if (vclasses.isEmpty) vclasses
       else vclasses union accessibleClassesUnder(vclasses)
     }
 
-    def isAccessible(clazz: ClassInfo, prefix: Set[ClassInfo]) = {
-      val idx = clazz.name.lastIndexOf("$")
+    def isAccessible(decodedName: String, clazz: ClassInfo,
+                     prefix: Set[(String, ClassInfo)]) = {
+      val idx = decodedName.lastIndexOf("$")
       lazy val isReachable =
       	if (idx < 0) prefix.isEmpty // class name contains no $
-      	else (prefix exists (_.name == clazz.name.substring(0, idx))) // prefix before dollar is an accessible class detected previously
+      	else (prefix exists (_._1 == decodedName.substring(0, idx))) // prefix before dollar is an accessible class detected previously
       clazz.isPublic && isReachable
     }
 
-    accessibleClassesUnder(Set.empty)
+    accessibleClassesUnder(Set.empty) map (_._2)
   }
 
   /** All implementation classes of traits (classes that end in '$class'). */
