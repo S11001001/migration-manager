@@ -1,5 +1,6 @@
 package com.typesafe.tools.mima.core
 
+import scala.reflect.NameTransformer
 import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.util.ClassPath
 import collection.mutable
@@ -72,10 +73,11 @@ abstract class PackageInfo(val owner: PackageInfo) {
     }
     
     def isAccessible(clazz: ClassInfo, prefix: Set[ClassInfo]) = {
-      val idx = clazz.name.lastIndexOf("$")
+      val dcname = NameTransformer.decode(clazz.name)
+      val idx = dcname.lastIndexOf("$")
       lazy val isReachable = 
       	if (idx < 0) prefix.isEmpty // class name contains no $
-      	else (prefix exists (_.name == clazz.name.substring(0, idx))) // prefix before dollar is an accessible class detected previously
+      	else (prefix exists (p => NameTransformer.decode(p.name) == dcname.substring(0, idx))) // prefix before dollar is an accessible class detected previously
       clazz.isPublic && isReachable
     }
     
