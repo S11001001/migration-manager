@@ -1,0 +1,4 @@
+method x()Int in trait A_* does not have a correspondent in new version
+method y()Int in object A_* does not have a correspondent in new version
+method z()Int in class B_*/ does not have a correspondent in new version
+method t()Int in object B_*/ does not have a correspondent in new version
